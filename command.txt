@@ -1,0 +1,37 @@
+mc_mgrp_create 1
+mc_node_create 0 1
+mc_node_create 1 2
+mc_node_associate 1 0
+mc_node_associate 1 1
+mirroring_add 233 255
+table_add broadcast_arp multicast 0x0806 => 1
+table_add broadcast_ndp multicast 58 => 1
+table_add postcard clone_cpu  =>
+table_add match_ipv4 forward 10.0.0.1 => 1
+table_add match_ipv4 forward 10.0.0.2 => 2
+table_add match_ipv6 forward 2001::1 => 1
+table_add match_ipv6 forward 2002::1 => 2
+table_add update_ifid write_ifid 6666 =>
+table_add update_timestamp write_timestamp 6666 =>
+table_add update_transitdelay write_transitdelay 6666 =>
+table_add update_queuedepth write_queuedepth 6666 =>
+table_add header_update header_modify 6666 => 00:00:00:00:00:ff 20ff::1
+table_add get_threshold read_setting  =>
+register_write depth_setting 0 32
+table_add header_udp create_udp  => 6666
+table_add header_ioam create_ioam  => 0x6a0000
+table_add drop_pkt drop  =>
+
+table_add header_dex create_dex 2002::1 2222&&&0xffff 128&&&0x0  => 0x6a0000 1
+
+mc_mgrp_create 1
+mc_node_create 0 1
+mc_node_create 1 2
+mc_node_associate 1 0
+mc_node_associate 1 1
+table_add broadcast_arp multicast 0x0806 => 1
+table_add broadcast_ndp multicast 58 => 1
+table_add match_ipv4 forward 10.0.0.1 => 1
+table_add match_ipv4 forward 10.0.0.2 => 2
+table_add match_ipv6 forward 2001::1 => 1
+table_add match_ipv6 forward 2002::1 => 2

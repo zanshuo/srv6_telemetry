@@ -1,11 +1,9 @@
 BUILD_DIR = build
 PCAP_DIR = pcaps
 LOG_DIR = logs
+
 P4C = p4c-bm2-ss
-ifndef JSON_NAME
-JSON_NAME = telemetry
-endif
-P4C_ARGS += --p4runtime-files $(BUILD_DIR)/$(JSON_NAME).p4.p4info.txt
+P4C_ARGS += --p4runtime-files $(BUILD_DIR)/$(basename $@).p4.p4info.txt
 
 RUN_SCRIPT = ./utils/run_exercise.py
 
@@ -13,13 +11,13 @@ ifndef TOPO
 TOPO = topology.json
 endif
 
-source = ./source_p4_code/telemetry.p4
+source = $(wildcard *.p4)
 compiled_json := $(source:.p4=.json)
 
 ifndef DEFAULT_PROG
-DEFAULT_PROG = source_p4_code/telemetry.p4
+DEFAULT_PROG = $(wildcard *.p4)
 endif
-DEFAULT_JSON = $(BUILD_DIR)/$(JSON_NAME).json
+DEFAULT_JSON = $(BUILD_DIR)/$(DEFAULT_PROG:.p4=.json)
 
 # Define NO_P4 to start BMv2 without a program
 ifndef NO_P4
@@ -42,7 +40,7 @@ stop:
 build: dirs $(compiled_json)
 
 %.json: %.p4
-	$(P4C) --p4v 16 $(P4C_ARGS) -o $(BUILD_DIR)/$(JSON_NAME).json $<
+	$(P4C) --p4v 16 $(P4C_ARGS) -o $(BUILD_DIR)/$@ $<
 
 dirs:
 	mkdir -p $(BUILD_DIR) $(PCAP_DIR) $(LOG_DIR)

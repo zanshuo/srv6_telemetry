@@ -1,0 +1,16 @@
+table_add srv6_control_match NoAction 2002::2 =>
+table_add insert_ipv6_forward_t insert_ipv6_forward 2001::1/128 => 1
+table_add insert_ipv6_forward_t insert_ipv6_forward 2003::3/128 => 2
+table_add pop_srh_t pop_srh =>
+table_add drop_pkt1 drop =>
+table_add drop_pkt drop =>
+table_add transit_srh_t transit_srh =>
+mirroring_add 233 255
+table_add MyIngress.clone_to_cpu_t MyIngress.clone_to_cpu =>
+table_add MyEgress.clone_to_cpu_t MyEgress.clone_to_cpu =>
+table_add export_port_t export_port =>
+table_add export_timestamp_t export_timestamp =>
+table_add export_transit_delay_t export_transit_delay =>
+table_add export_dequene_length_t export_dequene_length =>
+table_add export_enquene_length_t export_enquene_length =>
+table_add update_header_t update_header => 2002::22 2004::255

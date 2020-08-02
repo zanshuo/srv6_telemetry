@@ -19,12 +19,11 @@
 # We encourage you to dissect this script to better understand the BMv2/Mininet
 # environment used by the P4 tutorial.
 #
-
 import os, sys, json, subprocess, re, argparse
 from time import sleep
 
 from p4_mininet import P4Switch, P4Host
-from mininet.log import setLogLevel
+
 from mininet.net import Mininet
 from mininet.topo import Topo
 from mininet.link import TCLink
@@ -32,7 +31,7 @@ from mininet.cli import CLI
 from mininet.link import Intf
 from p4runtime_switch import P4RuntimeSwitch
 import p4runtime_lib.simple_controller
-sys.path.append("")
+
 def configureP4Switch(**switch_args):
     """ Helper class that is called by mininet to initialize
         the virtual P4 switches. The purpose is to ensure each
@@ -100,13 +99,13 @@ class ExerciseTopo(Topo):
             self.addHost(host_name, ip=host_ip, mac=host_mac)
             self.addLink(host_name, sw_name,
                          delay=link['latency'], bw=link['bandwidth'],
-                         max_queue_size=link['max_queue_size'],port2=sw_port)
+                         port2=sw_port)
 
         for link in switch_links:
             sw1_name, sw1_port = self.parse_switch_node(link['node1'])
             sw2_name, sw2_port = self.parse_switch_node(link['node2'])
             self.addLink(sw1_name, sw2_name,
-                        port1=sw1_port, port2=sw2_port,max_queue_size=link['max_queue_size'],
+                        port1=sw1_port, port2=sw2_port,
                         delay=link['latency'], bw=link['bandwidth'])
 
 
@@ -222,18 +221,15 @@ class ExerciseRunner:
             link_dict = {'node1':s,
                         'node2':t,
                         'latency':'0ms',
-                        'bandwidth':None,
-                         'max_queue_size':None,
+                        'bandwidth':None
                         }
-            if len(link) > 2 :
+            if len(link) > 2:
                 link_dict['latency'] = self.format_latency(link[2])
             if len(link) > 3:
                 link_dict['bandwidth'] = link[3]
-            if len(link)>4 :
-                link_dict['max_queue_size'] = link[4]
 
             if link_dict['node1'][0] == 'h':
-                assert link_dict['node2'][0] == 'r' or link_dict['node2'][0] == 's', 'Hosts should be connected to switches, not ' + str(link_dict['node2'])
+                assert link_dict['node2'][0] == 's', 'Hosts should be connected to switches, not ' + str(link_dict['node2'])
             links.append(link_dict)
         return links
 
@@ -262,9 +258,14 @@ class ExerciseRunner:
                       controller = None)
 
         intFname1 = "con-eth0"
-        switch_outside1 = self.net.switches[6]
+        intFname2 = "con-eth1"
+        intFname3 = "con-eth2"
+        switch_outside1 = self.net.switches[0]
+        switch_outside2 = self.net.switches[1]
+        switch_outside3 = self.net.switches[2]
         _intf_1 = Intf(intFname1, node=switch_outside1, port=255)
-
+        _intf_2 = Intf(intFname2, node=switch_outside2, port=255)
+        _intf_3 = Intf(intFname3, node=switch_outside3, port=255)
 
 
     def program_switch_p4runtime(self, sw_name, sw_dict):
@@ -385,7 +386,7 @@ def get_args():
 if __name__ == '__main__':
     # from mininet.log import setLogLevel
     # setLogLevel("info")
-    setLogLevel('info')
+
     args = get_args()
     exercise = ExerciseRunner(args.topo, args.log_dir, args.pcap_dir,
                               args.switch_json, args.behavioral_exe, args.quiet)
