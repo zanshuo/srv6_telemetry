@@ -1,0 +1,11 @@
+load_new_config_file thrift_command/out_of_bandswitch.json
+swap_configs
+table_add ipv6_forward_t origin_ip_forward 2555::255/128 => 255
+table_add ipv6_forward_t origin_ip_forward 2001::1/128 => 1
+table_add ipv6_forward_t origin_ip_forward 2002::2/128 => 2
+table_add ipv6_forward_t origin_ip_forward 2003::3/128 => 3
+table_add ipv6_forward_t origin_ip_forward 2004::4/128 => 4
+table_add ipv6_forward_t origin_ip_forward 2005::5/128 => 5
+table_add ipv6_forward_t origin_ip_forward 2006::6/128 => 6
+
+

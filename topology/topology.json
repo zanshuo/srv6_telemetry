@@ -1,0 +1,37 @@
+{
+    "hosts": {
+        "h1": {"ip": "10.1.1.1/24", "mac": "08:00:00:00:01:11",
+               "commands":["ip route add default  via 10.1.1.254",
+                           "arp -i eth0 -s 10.1.1.254 00:00:00:00:00:01",
+                            "ip link add eth1 type bridge",
+                            "ifconfig eth1 1.1.1.1/24",
+                             "ip link set eth1 up"],
+                "bw": 1000},
+        "h2": {"ip": "10.2.2.2/24", "mac": "08:00:00:00:02:22",
+               "commands":["ip route add default  via 10.2.2.254",
+                           "arp -i eth0 -s 10.2.2.254 00:00:00:00:00:03",
+                           "ip link add eth1 type bridge",
+                            "ifconfig eth1 2.2.2.2/24",
+                             "ip link set eth1 up"]}
+
+    },
+    "switches": {
+        "r1": { "cli_input" : "thrift_command/r1.txt"},
+        "r2": { "cli_input" : "thrift_command/r2.txt"},
+        "r3": { "cli_input" : "thrift_command/r3.txt"},
+        "r4": { "cli_input" : "thrift_command/r4.txt" },
+        "r5": { "cli_input" : "thrift_command/r5.txt"},
+        "r6": {"cli_input" : "thrift_command/r6.txt" },
+        "s7": {"cli_input" : "thrift_command/s7.txt"}
+
+    },
+    "links": [
+        ["h1", "r1-p1"], ["r1-p2", "r2-p1"],["r1-p3", "r3-p1"],
+        ["r2-p2", "r3-p2"],["r2-p3", "r5-p2"],["r2-p4", "r4-p1"],
+        ["r3-p3", "r4-p2"],["r3-p4", "r5-p1"],["r4-p3", "r5-p3"],
+        ["r4-p4", "r6-p2"],["r5-p4", "r6-p3"],["r6-p1", "h2"],
+        ["r1-p255","s7-p1"],["r2-p255","s7-p2"],["r3-p255","s7-p3"],
+        ["r4-p255","s7-p4"],["r5-p255","s7-p5"],["r6-p255","s7-p6"]
+
+    ]
+}
