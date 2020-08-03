@@ -18,7 +18,8 @@ class SingleSwitchTopo(Topo):
             # 10 Mbps, 5ms delay, 0% Loss, 1000 packet queue
             self.addLink(host, switch, bw=1000, delay='5ms', loss=0, max_queue_size=1000, use_htb=True)
 
-
+def test():
+    return wangshuo
 def perfTest():
     "Create network and run simple performance test"
     topo = SingleSwitchTopo(n=4)
