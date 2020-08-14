@@ -81,7 +81,7 @@ def table_search(port,table_name):
 
 
 # table_add drop_pkt drop =>
-table_add("drop_pkt","drop",9090,**dict1)
+# table_add("drop_pkt","drop",9090,**dict1)
 # def table_modify():
 #     pass
 # def table_delete():

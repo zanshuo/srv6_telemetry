@@ -22,7 +22,6 @@ from time import sleep
 import os
 import tempfile
 import socket
-
 class P4Host(Host):
     def config(self, **params):
         r = super(P4Host, self).config(**params)
@@ -144,6 +143,7 @@ class P4Switch(Switch):
                   "Check the switch log file.\n".format(self.name))
             exit(1)
         info("P4 switch {} has been started.\n".format(self.name))
+
 
     def stop(self):
         "Terminate P4 switch."

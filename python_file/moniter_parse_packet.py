@@ -1,19 +1,14 @@
-
+#!/usr/bin/python3
 import bitstring
 from collections import OrderedDict
 from scapy.all import *
 import json
 
-
-
-
-
-
 def parse_packet(pkt_raw):
     data_dict = OrderedDict()
     raw_data_list = list()
     pkt = pkt_raw[3].load
-    start_bit_number = 16
+    start_byte_number = 16
     # 网络数据包用大端
     namespace_id = bitstring.BitArray(pkt)[:16].unpack("uintbe:16")[0]
     flags = bitstring.BitArray(pkt)[16:32].unpack("uintbe:16")[0]
@@ -40,10 +35,11 @@ def parse_packet(pkt_raw):
         if (serial == 12 and flag == "1"):
             # print("export_enquene_length")
             data_dict["export_enquene_length"] = ""
-
+        if(serial == 23 and flag == "1"):
+            data_dict["export_packet_length"] = ""
     for temp in range(int((len(pkt) - 16) / 4)):
-        raw_data_list.append(pkt[start_bit_number:start_bit_number + 4])
-        start_bit_number = start_bit_number + 4
+        raw_data_list.append(pkt[start_byte_number:start_byte_number + 4])
+        start_byte_number = start_byte_number + 4
     for temp1, temp2 in zip(data_dict.keys(), raw_data_list):
         if (len(data_dict.keys()) == len(raw_data_list)):
             data_dict[temp1] = temp2
@@ -61,7 +57,9 @@ def parse_packet(pkt_raw):
         ingress_port = bitstring.BitArray(data_dict["export_port"])[:16]
         egress_port = bitstring.BitArray(data_dict["export_port"])[16:]
         data_dict["export_port"] = [ingress_port.unpack("uintbe:16")[0], egress_port.unpack("uintbe:16")[0]]
-
+    if "export_packet_length" in data_dict.keys():
+        data_dict["export_packet_length"] = bitstring.BitArray(data_dict["export_packet_length"]).unpack("uintbe:32")[
+            0]
     with open("data_list.json",encoding="utf-8",mode="a") as f1,open("dex.json",encoding="utf-8",mode="a") as f2:
         f1.write(json.dumps(data_dict)+"\n")
         f2.write(json.dumps(dex_dict)+"\n")
@@ -70,7 +68,8 @@ def parse_packet(pkt_raw):
     # print(type(dex_dict["namespace_id"]))
 
 
-con_eth0 = sniff(prn=parse_packet,filter="udp",store=0,iface=["con-eth0","con-eth1","con-eth2"],timeout=1)
+con_eth0 = sniff(prn=parse_packet,filter="udp port 55551 ",store=1,iface="con-eth0")
+wrpcap("pak.cap",con_eth0)
 # con_eth1 = sniff(prn=parse_packet,filter="udp",store=0,iface="con-eth1",timeout=1)
 # con_eth2 = sniff(prn=parse_packet,filter="udp",store=0,iface="con-eth2",timeout=1)
 

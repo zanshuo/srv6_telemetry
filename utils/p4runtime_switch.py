@@ -20,10 +20,10 @@ from time import sleep
 from mininet.node import Switch
 from mininet.moduledeps import pathCheck
 from mininet.log import info, error, debug
-
+import datetime
 from p4_mininet import P4Switch, SWITCH_START_TIMEOUT
 from netstat import check_listening_on_port
-
+import json
 class P4RuntimeSwitch(P4Switch):
     "BMv2 switch with gRPC support"
     next_grpc_port = 50051
@@ -123,7 +123,11 @@ class P4RuntimeSwitch(P4Switch):
             args.append("-- --grpc-server-addr 0.0.0.0:" + str(self.grpc_port))
         cmd = ' '.join(args)
         info(cmd + "\n")
-
+        dict1 = {self.name: datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')}
+        with open("build/time.json", mode="a") as f1:
+            f1.write(json.dumps(dict1) + "\n")
+        f1.close()
+        sleep(1)
 
         pid = None
         with tempfile.NamedTemporaryFile() as f:
@@ -134,4 +138,5 @@ class P4RuntimeSwitch(P4Switch):
             error("P4 switch {} did not start correctly.\n".format(self.name))
             exit(1)
         info("P4 switch {} has been started.\n".format(self.name))
+
 

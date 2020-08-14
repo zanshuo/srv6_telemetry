@@ -26,6 +26,33 @@ header Ethernet{
     bit<16> ethernetType;
 }
 
+header UDLD_Header{
+    bit<8> DSAP;
+    bit<8> SSAP;
+    bit<8> cntl;
+    bit<24> org_code;
+    bit<16> protocol_type;
+    bit<3> version;
+    bit<5> Opcode;
+    bit<8> Flags;
+    bit<16> checksum;
+}
+header UDLD_TLV_Device_ID{
+    bit<16> udld_type;
+    bit<16> udld_length;
+    bit<32> device_id;
+}
+header UDLD_TLV_Echo{
+    bit<16> udld_type;
+    bit<16> udld_length;
+    bit<32> device_id;
+    bit<32> port_id;
+}
+header UDLD_TLV_Sequence{
+    bit<16> udld_type;
+    bit<16> udld_length;
+    bit<32> sequencenumber;
+}
 header IPv4{
     bit<4> version;
     bit<4> ihl;
@@ -84,6 +111,8 @@ header_union IP{
 header Data_list_h{
     bit<32> data;
 }
+
+
 header ICMP{
     bit<8> icmp_type;
     bit<8> icmp_code;
@@ -93,6 +122,10 @@ header ICMP{
 
 struct headers{
     Ethernet ethernet;
+    UDLD_Header udld_header;
+    UDLD_TLV_Device_ID udld_tlv_device_id;
+    UDLD_TLV_Echo udld_tlv_echo;
+    UDLD_TLV_Sequence udld_tlv_sequence;
     IPv6 insert_ipv6;
 //    IPv6 export_ipv6;
     UDP_h export_udp;
@@ -100,6 +133,7 @@ struct headers{
     segment[Max_Hop] segment_list;
     DEX_h dex;
     Data_list_h[24] data_list_h;
+//    Data_list_h_wide[24] data_list_h_wide;
     IPv4 icmp_ipv4;
     ICMP icmp;
     IP ip;
@@ -108,26 +142,49 @@ struct headers{
 }
 
 struct required_meta{
-
     bit<9> ingress_port;
     bit<9> egress_port;
     bit<32> packet_length;
+    bit<48> ingress_global_timestamp;
+//    bit<32> enq_timestamp;
 
 }
 struct metadata{
-    required_meta user_mata;
-
-
+    required_meta user_meta;
 
 }
 parser MyParser(packet_in pkt,out headers hdr,inout metadata meta,inout standard_metadata_t stdmeta){
     state start{
         pkt.extract(hdr.ethernet);
-        transition select(hdr.ethernet.ethernetType){
-            0x0800:parse_ipv4;
-            0x86dd:parse_ipv6;
+        transition select(hdr.ethernet.ethernetType,hdr.ethernet.dstAddr){
+            (0x0800,_):parse_ipv4;
+            (0x86dd,_):parse_ipv6;
+            (_,_):parse_udld;
+        }
+    }
+    state parse_udld{
+        bit<24> code= pkt.lookahead<UDLD_Header>().org_code;
+        bit<16> p_type = pkt.lookahead<UDLD_Header>().protocol_type;
+        transition select(code,p_type){
+            (0x00000c,0x0111):parse_udld_header;
+            (_,_):reject;
+        }
+    }
+    state parse_udld_header{
+        pkt.extract(hdr.udld_header);
+        transition select(hdr.udld_header.Opcode){
+            1:parse_udld_tlv_device_id;
+            0:parse_udld_tlv_sequence;
             default:accept;
         }
+    }
+    state parse_udld_tlv_device_id{
+        pkt.extract(hdr.udld_tlv_device_id);
+        transition parse_udld_tlv_sequence;
+    }
+    state parse_udld_tlv_sequence{
+        pkt.extract(hdr.udld_tlv_sequence);
+        transition accept;
     }
     state parse_ipv4{
         pkt.extract(hdr.ip.ipv4);
@@ -199,7 +256,52 @@ parser MyParser(packet_in pkt,out headers hdr,inout metadata meta,inout standard
 control MyIngress(inout headers hdr,inout metadata meta,inout standard_metadata_t stdmeta){
      register<bit<32>>(512) dex_sequencenumber;
      register<bit<32>>(10) interface_packet_length;
+     register<bit<64>>(10) link_status;
      bit<32> packet_length_temp;
+//     register<bit<32>>(2) ingress_global_timestamp;
+     action udld_tlv_send_to_peer(bit<32> ipaddress,bit<16> group){
+        hdr.udld_header.Opcode = 1;
+        hdr.udld_tlv_device_id.setValid();
+        hdr.udld_tlv_device_id.udld_type = 0x0001;
+        hdr.udld_tlv_device_id.udld_length = 8;
+        hdr.udld_tlv_device_id.device_id = ipaddress;
+        stdmeta.mcast_grp = group;
+
+     }
+     action update_link_status(){
+        bit<64> link_status_tmp = hdr.udld_tlv_device_id.device_id ++ hdr.udld_tlv_sequence.sequencenumber;
+//        link_status.read(link_status_tmp,(bit<32>)stdmeta.ingress_port);
+        link_status.write((bit<32>)stdmeta.ingress_port,link_status_tmp);
+     }
+     action udld_tlv_send_to_controller(bit<32> ipaddress){
+        hdr.udld_header.Opcode = 2;
+        hdr.udld_tlv_echo.setValid();
+        hdr.udld_tlv_echo.udld_type = 0x0003;
+        hdr.udld_tlv_echo.udld_length = 12;
+        hdr.udld_tlv_echo.device_id = hdr.udld_tlv_device_id.device_id;
+        hdr.udld_tlv_echo.port_id = (bit<32>)stdmeta.ingress_port;
+        update_link_status();
+        hdr.udld_tlv_device_id.device_id= ipaddress;
+        stdmeta.egress_spec = 255;
+
+     }
+
+
+     table update_link_status_t{
+        actions={update_link_status;}
+     }
+
+
+     table udld_forward{
+        key ={
+            hdr.udld_header.Opcode:exact;
+
+        }
+        actions={
+            udld_tlv_send_to_controller;
+            udld_tlv_send_to_peer;
+        }
+     }
     /**插入的IPV6转发*/
 
     action insert_ipv6_forward(bit<9> port){
@@ -207,11 +309,15 @@ control MyIngress(inout headers hdr,inout metadata meta,inout standard_metadata_
         hdr.insert_ipv6.hoplimit = hdr.insert_ipv6.hoplimit - 1;
         hdr.ip.ipv4.ttl=hdr.ip.ipv4.ttl-1;
         hdr.ip.ipv6.hoplimit =hdr.ip.ipv6.hoplimit-1;
-        meta.user_mata.ingress_port = stdmeta.ingress_port;
-        meta.user_mata.egress_port = port;
+        meta.user_meta.ingress_port = stdmeta.ingress_port;
+        meta.user_meta.egress_port = port;
         interface_packet_length.read(packet_length_temp,(bit<32>)port);
         interface_packet_length.write((bit<32>)port,packet_length_temp+stdmeta.packet_length);
+//        meta.user_meta.enq_timestamp = stdmeta.enq_timestamp;
+//        ingress_global_timestamp.write(1,(bit<32>)stdmeta.ingress_global_timestamp);
+//        meta.user_meta.ingress_global_timestamp = stdmeta.ingress_global_timestamp;
     }
+
 //    /**原始IPV4转发*/
 //    action ipv4_forward(bit<9> port){
 //        stdmeta.egress_spec = port;
@@ -226,14 +332,17 @@ control MyIngress(inout headers hdr,inout metadata meta,inout standard_metadata_
         hdr.ethernet.srcAddr = src_mac_address;
         hdr.ip.ipv4.ttl=hdr.ip.ipv4.ttl-1;
         hdr.ip.ipv6.hoplimit =hdr.ip.ipv6.hoplimit-1;
-        meta.user_mata.ingress_port = stdmeta.ingress_port;
-        meta.user_mata.egress_port = port;
+        meta.user_meta.ingress_port = stdmeta.ingress_port;
+        meta.user_meta.egress_port = port;
         if(!hdr.icmp_ipv4.isValid())
         {
             hdr.ethernet.dstAddr = dst_mac_address;
         }
         interface_packet_length.read(packet_length_temp,(bit<32>)port);
         interface_packet_length.write((bit<32>)port,packet_length_temp+stdmeta.packet_length);
+//        meta.user_meta.enq_timestamp = stdmeta.enq_timestamp;
+//        ingress_global_timestamp.write(1,(bit<32>)stdmeta.ingress_global_timestamp);
+//        meta.user_meta.ingress_global_timestamp = stdmeta.ingress_global_timestamp;
     }
 
 //    /**原始IPV6转发*/
@@ -466,11 +575,11 @@ control MyIngress(inout headers hdr,inout metadata meta,inout standard_metadata_
        /**发到控制器，IOAM数据*/
     action clone_to_cpu(){
 
-
+        meta.user_meta.ingress_global_timestamp = stdmeta.ingress_global_timestamp;
         clone3<metadata>(CloneType.I2E, 233, meta);
     }
     action copy_packet_length(){
-        meta.user_mata.packet_length = stdmeta.packet_length;
+        meta.user_meta.packet_length = stdmeta.packet_length;
     }
     table copy_packet_length_t{
         actions = {copy_packet_length;}
@@ -723,6 +832,22 @@ control MyIngress(inout headers hdr,inout metadata meta,inout standard_metadata_
                    }
 
 
+              else if (hdr.udld_header.isValid()){
+                /**flag置位 || Opcode=0 || link_statis_tmp=0代表是新出现的链路|| 如果端口存在，但是连接设备变了
+                    发送UDLD包给peer或者控制器
+                    否则 仅仅更新寄存器
+                    控制器通过寄存器来获知节点是否收到UDLD信息。
+                */
+                        bit<64> link_status_tmp;
+                        link_status.read(link_status_tmp,(bit<32>)stdmeta.ingress_port);
+                        bool flag = link_status_tmp == 0 || link_status_tmp[63:32] != hdr.udld_tlv_device_id.device_id;
+                        if(hdr.udld_header.Flags == 2  || hdr.udld_header.Opcode == 0 || flag)
+                            udld_forward.apply();
+                        else{
+                            update_link_status_t.apply();
+                        }
+
+              }
               else{
                     drop_pkt.apply();
               }
@@ -800,7 +925,7 @@ control MyEgress(inout headers hdr, inout metadata meta, inout standard_metadata
         入接口：stdmeta.ingress_port
         */
 
-
+        register<bit<48>>(2) ingress_global_timestamp;
 
 //    action insert_ipv6_forward(bit<9> port){
 //        stdmeta.egress_spec = port;
@@ -822,6 +947,7 @@ control MyEgress(inout headers hdr, inout metadata meta, inout standard_metadata
 //    }
   action clone_to_cpu(){
 
+        meta.user_meta.ingress_global_timestamp = stdmeta.ingress_global_timestamp;
         clone3<metadata>(CloneType.E2E, 233, meta);
     }
     table clone_to_cpu_t{
@@ -834,46 +960,55 @@ control MyEgress(inout headers hdr, inout metadata meta, inout standard_metadata
      //报告入接口 出接口
     action export_port(){
         hdr.data_list_h[0].setValid();
-        hdr.data_list_h[0].data = 7w0 ++ meta.user_mata.ingress_port ++ 7w0 ++ meta.user_mata.egress_port;
+//        hdr.data_list_h[0].data = 7w0 ++ meta.user_meta.ingress_port ++ 7w0 ++ meta.user_meta.egress_port;
+        hdr.data_list_h[0].data = 7w0 ++ meta.user_meta.ingress_port ++ 7w0 ++ meta.user_meta.egress_port;
         hdr.insert_ipv6.payloadlength = hdr.insert_ipv6.payloadlength + 4;
         hdr.export_udp.udplength = hdr.export_udp.udplength + 4;
 
     }
-    //报告入队时间戳 单位微秒
-    action export_timestamp(){
+    //报告入队时间戳 单位微秒 使用的是ingress_global_timstamp
+    action export_timestamp(bit<48> time_diff){
+        ingress_global_timestamp.write(0,meta.user_meta.ingress_global_timestamp);
+        bit<48> tmp = meta.user_meta.ingress_global_timestamp + time_diff;
         hdr.data_list_h[1].setValid();
-        hdr.data_list_h[1].data = stdmeta.enq_timestamp;
-        hdr.insert_ipv6.payloadlength = hdr.insert_ipv6.payloadlength + 4;
-        hdr.export_udp.udplength=hdr.export_udp.udplength + 4;
+        hdr.data_list_h[1].data = 16w0 ++ tmp[47:32];
+        hdr.data_list_h[2].setValid();
+        hdr.data_list_h[2].data= tmp[31:0];
+        hdr.insert_ipv6.payloadlength = hdr.insert_ipv6.payloadlength + 8;
+        hdr.export_udp.udplength=hdr.export_udp.udplength + 8;
 
     }
-    //报告节点转发延迟
+    //报告节点转发延迟 在队列中的时间+（进入队列时间-进入ingress时间） 进入队列时间是已经处理完pipeline后开始进入发送队列的时间
     action export_transit_delay(){
-        hdr.data_list_h[2].setValid();
-        hdr.data_list_h[2].data = stdmeta.deq_timedelta;
-        hdr.insert_ipv6.payloadlength = hdr.insert_ipv6.payloadlength + 4;
-        hdr.export_udp.udplength=hdr.export_udp.udplength + 4;
+        bit<48> tmp = (bit<48>)stdmeta.deq_timedelta + (bit<48>)stdmeta.enq_timestamp - meta.user_meta.ingress_global_timestamp;
+        hdr.data_list_h[3].setValid();
+        hdr.data_list_h[3].data = 16w0 ++ tmp[47:32];
+        hdr.data_list_h[4].setValid();
+        hdr.data_list_h[4].data=tmp[31:0];
+        hdr.insert_ipv6.payloadlength = hdr.insert_ipv6.payloadlength + 8;
+        hdr.export_udp.udplength=hdr.export_udp.udplength + 8;
 
     }
     //报告出队队列长度
     action export_dequene_length(){
-          hdr.data_list_h[3].setValid();
-          hdr.data_list_h[3].data=13w0 ++ stdmeta.deq_qdepth;
+          hdr.data_list_h[5].setValid();
+          hdr.data_list_h[5].data=13w0 ++ stdmeta.deq_qdepth;
           hdr.insert_ipv6.payloadlength = hdr.insert_ipv6.payloadlength + 4;
           hdr.export_udp.udplength=hdr.export_udp.udplength + 4;
 
     }
     //报告入队队列长度
     action export_enquene_length(){
-          hdr.data_list_h[4].setValid();
-          hdr.data_list_h[4].data = 13w0 ++ stdmeta.enq_qdepth;
+          hdr.data_list_h[6].setValid();
+          hdr.data_list_h[6].data = 13w0 ++ stdmeta.enq_qdepth;
           hdr.insert_ipv6.payloadlength = hdr.insert_ipv6.payloadlength + 4;
           hdr.export_udp.udplength=hdr.export_udp.udplength + 4;
 
     }
         action export_packet_length(){
+          hdr.dex.tracetype[0:0] = 1;
           hdr.data_list_h[23].setValid();
-          hdr.data_list_h[23].data = meta.user_mata.packet_length;
+          hdr.data_list_h[23].data = meta.user_meta.packet_length;
           hdr.insert_ipv6.payloadlength = hdr.insert_ipv6.payloadlength + 4;
           hdr.export_udp.udplength=hdr.export_udp.udplength + 4;
 
@@ -1083,7 +1218,10 @@ control MyUpdateChecksum(inout headers hdr, inout metadata meta) {
             hdr.data_list_h[2].data,
             hdr.data_list_h[3].data,
             hdr.data_list_h[4].data,
+            hdr.data_list_h[5].data,
+            hdr.data_list_h[6].data,
             hdr.data_list_h[23].data
+
         },hdr.export_udp.checksum, HashAlgorithm.csum16);
      update_checksum(true,
         {
@@ -1147,13 +1285,19 @@ control MyUpdateChecksum(inout headers hdr, inout metadata meta) {
 control MyDeparser(packet_out pkt, in headers hdr) {
     apply {
         pkt.emit(hdr.ethernet);
+        pkt.emit(hdr.udld_header);
+        pkt.emit(hdr.udld_tlv_device_id);
+        pkt.emit(hdr.udld_tlv_echo);
+        pkt.emit(hdr.udld_tlv_sequence);
         pkt.emit(hdr.insert_ipv6);
+
 //        pkt.emit(hdr.export_ipv6);
         pkt.emit(hdr.export_udp);
         pkt.emit(hdr.insert_srh);
         pkt.emit(hdr.segment_list);
         pkt.emit(hdr.dex);
         pkt.emit(hdr.data_list_h);
+//        pkt.emit(hdr.data_list_h_wide);
         pkt.emit(hdr.icmp_ipv4);
         pkt.emit(hdr.icmp);
         pkt.emit(hdr.ip);

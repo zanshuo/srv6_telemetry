@@ -5,8 +5,8 @@
                            "arp -i eth0 -s 10.1.1.254 00:00:00:00:00:01",
                             "ip link add eth1 type bridge",
                             "ifconfig eth1 1.1.1.1/24",
-                             "ip link set eth1 up"],
-                "bw": 1000},
+                             "ip link set eth1 up"]
+                },
         "h2": {"ip": "10.2.2.2/24", "mac": "08:00:00:00:02:22",
                "commands":["ip route add default  via 10.2.2.254",
                            "arp -i eth0 -s 10.2.2.254 00:00:00:00:00:03",
