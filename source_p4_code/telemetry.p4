@@ -2,6 +2,11 @@
 version:2.0
 date:2020-7031
 author:wangshuo
+
+date:2020/8/16:
+1.增加udld function
+2.修改export timestamp,
+3.修改export transit delay
 */
 
 /**限制

@@ -32,7 +32,7 @@ table_add pop_srh_t pop_srh =>
 table_add MyIngress.clone_to_cpu_t MyIngress.clone_to_cpu =>
 table_add MyEgress.clone_to_cpu_t MyEgress.clone_to_cpu =>
 table_add export_port_t export_port =>
-table_add export_timestamp_t export_timestamp => 0
+
 table_add export_transit_delay_t export_transit_delay =>
 table_add export_dequene_length_t export_dequene_length =>
 table_add export_enquene_length_t export_enquene_length =>
