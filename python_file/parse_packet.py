@@ -4,7 +4,6 @@ from collections import OrderedDict
 from scapy.all import *
 import json
 
-
 class Parse:
     config_list = list()
     path_dict = dict()
@@ -31,12 +30,10 @@ class Parse:
             if "ipv4_address" in tmp.keys():
                 cls.rel[tmp["ipv4_address"]] = tmp["name"]
 
-    def __int__(self,filter="outbound",iface="con-eth0"):
-        self.filter = filter
-        self.iface = iface
-        Parse.share_data()
+   
 
     def parse_oam(self,pkt_raw):
+        print("shoudao packet")
         data_dict = OrderedDict()
         try:
             src_Ipv6_addr = pkt_raw[1].src
@@ -80,7 +77,7 @@ class Parse:
             data_dict["export_packet_length"] = bitstring.BitArray(pkt[start_byte_number:start_byte_number+4]).unpack("uintbe:32")[0]
             start_byte_number =start_byte_number+4
         dex_dict["data"] = data_dict
-        with open("./build/data_list.json",encoding="utf-8",mode="a") as f1:
+        with open("../build/data_list.json",encoding="utf-8",mode="a") as f1:
             f1.write(json.dumps(dex_dict,indent=1)+"\n")
         f1.close()
 

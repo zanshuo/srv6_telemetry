@@ -1,4 +1,5 @@
 #!/usr/bin/python
+from os import sep
 import sys
 from multiprocessing import Pool
 sys.path.insert(0,"../behavioral-model/tools/")
@@ -40,9 +41,10 @@ def main_delta():
         p1 = ThreadPoolExecutor(2)
         t1 = p1.submit(time_elapsed, first_node)
         t2 = p1.submit(time_elapsed, second_node)
+        print(t1.result(),t2.result())
         tmp1=t2.result()[0]-t1.result()[0]
         tmp2 = tmp1.seconds*10**6 + tmp1.microseconds
-        print(t1.result())
+        # print(t1.result())
         time_dict[list_switch[x]["thrift_port"]] = t1.result()[1] - (t2.result()[1] - tmp2)
         p1.shutdown()
     # for x,y in time_dict.items():
