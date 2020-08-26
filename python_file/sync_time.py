@@ -10,10 +10,7 @@ from sswitch_CLI import SimpleSwitchAPI
 from concurrent.futures import ThreadPoolExecutor,ProcessPoolExecutor
 from sswitch_runtime.ttypes import *
 import json
-import os
-import time
-# from gevent import monkey;monkey.patch_all()
-# import gevent
+
 
 def thrift_connect(port):
     pre = runtime_CLI.PreType.SimplePreLAG
@@ -41,10 +38,8 @@ def main_delta():
         p1 = ThreadPoolExecutor(2)
         t1 = p1.submit(time_elapsed, first_node)
         t2 = p1.submit(time_elapsed, second_node)
-        print(t1.result(),t2.result())
         tmp1=t2.result()[0]-t1.result()[0]
         tmp2 = tmp1.seconds*10**6 + tmp1.microseconds
-        # print(t1.result())
         time_dict[list_switch[x]["thrift_port"]] = t1.result()[1] - (t2.result()[1] - tmp2)
         p1.shutdown()
     # for x,y in time_dict.items():
@@ -62,33 +57,26 @@ def main_delta():
     obj_switch = thrift_connect(str(list_switch[-1]["thrift_port"]))
     obj_switch.do_load_new_config_file("thrift_command/out_of_bandswitch.json")
     obj_switch.do_swap_configs("")
-if __name__ == '__main__':
+    
+# if __name__ == '__main__':
 
-    # # for x,y in time_dict.items():
-    # #     f_temp = open("./thrift_command/%s.txt"%(x),mode="a")
-    # #     f_temp.write("\ntable_add export_timestamp_t export_timestamp => %s"%(str(y)))
-    # #     f_temp.close()
-    # f2 = open("../build/time_delta.json", mode="w")
-    # json.dump(time_dict, f2, indent=1)
-    # f2.close()
-    obj_temp = thrift_connect(9090)
-    obj_temp2 = thrift_connect(9091)
-    r1= time_elapsed(obj_temp)
-    end_time_1 = r1[0]
-    r2= time_elapsed(obj_temp)
-    end_time_2= r2[0]
-    print(end_time_2-end_time_1)
+#     # # for x,y in time_dict.items():
+#     # #     f_temp = open("./thrift_command/%s.txt"%(x),mode="a")
+#     # #     f_temp.write("\ntable_add export_timestamp_t export_timestamp => %s"%(str(y)))
+#     # #     f_temp.close()
+#     # f2 = open("../build/time_delta.json", mode="w")
+#     # json.dump(time_dict, f2, indent=1)
+#     # f2.close()
+#     # obj_temp = thrift_connect(9090)
+#     # obj_temp2 = thrift_connect(9091)
+#     # r1= time_elapsed(obj_temp)
+#     # end_time_1 = r1[0]
+#     # r2= time_elapsed(obj_temp)
+#     # end_time_2= r2[0]
+#     # print(end_time_2-end_time_1)
 
-    # p1 = gevent.spawn(time_elapsed, obj_temp)
-    # p2 = gevent.spawn(time_elapsed, obj_temp2)
-    # gevent.joinall([p1, p2])
-    # print(p1.value[0])
-    # print(p2.value[0])
-
-
-
-
-
-
-
-
+#     # p1 = gevent.spawn(time_elapsed, obj_temp)
+#     # p2 = gevent.spawn(time_elapsed, obj_temp2)
+#     # gevent.joinall([p1, p2])
+#     # print(p1.value[0])
+#     # print(p2.value[0])

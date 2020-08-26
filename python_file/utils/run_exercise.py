@@ -199,7 +199,7 @@ class ExerciseRunner:
         # these  below code add in 2020-8-15
         for temp in self.net.switches:
             self.list_config.append({"name":temp.name,"thrift_port": temp.thrift_port,"grpc_port":temp.grpc_port})
-        # print(self.net.switches[0].name,self.net.switches[0].thrift_port)
+        sleep(1)
         self.parse_config()
         f1=open("build/config.json",mode="w")
         json.dump(self.list_config,f1,indent=1)
@@ -329,15 +329,18 @@ class ExerciseRunner:
     def parse_config(self):
         """ this method add in 2020-8-15
            """
-        for sw_name, sw_dict in self.switches.iteritems():
-            if "ipv4_address" in sw_dict and "ipv6_address" in sw_dict and "sid" in sw_dict :
-                for tmp in self.list_config:
-                    if tmp["name"] == sw_name:
-                        tmp["ipv4_address"] = sw_dict["ipv4_address"]
-                        tmp["ipv6_address"] = sw_dict["ipv6_address"]
-                        tmp["sid"] = sw_dict["sid"]
-
-
+        for sw_name, sw_dict in self.switches.iteritems():          
+            for tmp in self.list_config:
+                if sw_name == tmp["name"]:
+                    if "ipv4_address" in sw_dict :
+                        tmp["ipv4_address"] = sw_dict["ipv4_address"]         
+                    if "ipv6_address" in sw_dict :
+                        tmp["ipv6_address"] = sw_dict["ipv6_address"]   
+                    if "sid" in sw_dict:
+                        tmp["sid"] = sw_dict["sid"]   
+                    if "mac_address" in sw_dict:
+                        tmp["mac_address"] = sw_dict["mac_address"]   
+                  
 
 
     def program_hosts(self):

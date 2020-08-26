@@ -1158,7 +1158,7 @@ control MyEgress(inout headers hdr, inout metadata meta, inout standard_metadata
                 if(hdr.dex.tracetype[19:19] == 1){
                   export_transit_delay_t.apply();
                 }
-                //报告出队队列长度
+                //报告出队队列长度assert (isinstance(address_list,list )or address_list == None),"address_list参数类型错误"
                 if(hdr.dex.tracetype[17:17] == 1){
                   export_dequene_length_t.apply();
                 }

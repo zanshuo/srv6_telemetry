@@ -14,7 +14,7 @@ table_add insert_segment_list insert_srh_3 0 0x0000&&&0x0000 => 2002::2 2005::5 
 table_add match_flow_ipv4 insert_srh_header 0x010100000&&&0xffff0000 2.2.0.0/16 => 0 3 10
 table_add insert_segment_list_change_path_ipv4 insert_srh_3 0x01010101&&&0xffffffff 2.2.0.0/16 => 2003::3 2005::5 2006::6 10
 
-table_add match_flow_ipv4 insert_srh_dex 0x0a010101&&&0xffff0000 10.2.0.0/16 => 0x0000 0x6a0800 0x00000010 10
+table_add match_flow_ipv4 insert_srh_dex 0x0a010101&&&0xffff0000 10.2.0.0/16 => 0x0000 0x680000 0x00000010 10
 table_add insert_srh_header_t insert_srh_header 1 0x0000&&&0xffff => 0x20 0x04 10
 table_add insert_segment_list insert_srh_3 1 0x0000&&&0xffff => 2002::2 2004::4 2006::6 10
 
