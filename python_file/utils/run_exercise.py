@@ -204,9 +204,10 @@ class ExerciseRunner:
         f1=open("build/config.json",mode="w")
         json.dump(self.list_config,f1,indent=1)
         f1.close()
-        main_delta()
+        main_delta(switch_json_path="build/out_of_band_switch.json",switch_p4_path="source_p4_code/out_of_band_switch.p4",
+        route_json_path=self.switch_json)
         sleep(1)
-
+        
 
         # some programming that must happen after the net has started
         self.program_hosts()
@@ -414,7 +415,7 @@ def get_args():
 
 if __name__ == '__main__':
     # from mininet.log import setLogLevel
-    # setLogLevel("info")
+
 
     # setLogLevel('info')
 
