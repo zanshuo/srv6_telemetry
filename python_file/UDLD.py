@@ -33,7 +33,7 @@ class Udld:
         for tmp in cls.config_list:
             if "ipv4_address" in tmp.keys():
                 cls.rel[tmp["ipv4_address"]] = tmp["name"]
-
+            
     def send_udld_packet(self,sequence,flag):
         """
             sequence:int range:0 < sequence < 2**32-1
@@ -52,10 +52,10 @@ class Udld:
 
     def update_peer_json(self):
         print("start update")
-        for x ,y in Udld.path_dict.items():
-            for tmp1,tmp2 in y.items():
-                if tmp2[1] != self.sequence:
-                    del y[tmp1]
+        # for x ,y in Udld.path_dict.items():
+        #     for tmp1,tmp2 in y.items():
+        #         if tmp2[1] != self.sequence:
+        #             del y[tmp1]
         f=open(self.path_dir+"peer.json",mode ="w")
         print(Udld.path_dict)
         json.dump(Udld.path_dict,f,indent=1)
@@ -131,7 +131,7 @@ class Udld:
             peer_id = str(p1)+"."+str(p2)+"."+str(p3)+"."+str(p4)
             port_id = bitstring.BitArray(bytes=port_id_raw).unpack("uintbe:32")[0]
             sequence_number = bitstring.BitArray(bytes=sequence_number_raw).unpack("uintbe:32")[0]
-        
+            
             if device_id in Udld.rel.keys():
         
                 label.begin
@@ -154,11 +154,12 @@ class Udld:
                             Udld.update_peer_json()
                     elif peer_id == Udld.path_dict[Udld.rel[device_id]][port_id][0] and sequence_number > Udld.path_dict[Udld.rel[device_id]][port_id][1]:
                         Udld.path_dict[Udld.rel[device_id]][port_id][1]=sequence_number
-                        if sequence_number>3:
-                            Udld.update_peer_json()
+                        # if sequence_number>3:
+                        #     Udld.update_peer_json()
                         # print("new sequence") 
                               
             else:
+                sleep(0.3)
                 Udld.share_data(self.path_dir)
                 if device_id in Udld.rel.keys():
                     goto.begin 

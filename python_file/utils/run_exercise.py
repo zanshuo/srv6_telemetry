@@ -20,9 +20,13 @@
 # environment used by the P4 tutorial.
 #
 from collections import OrderedDict
-
+from concurrent.futures import ThreadPoolExecutor
+from threading import Event
 import os, sys, json, subprocess, re, argparse
 from time import sleep
+import Queue
+from gevent import event
+
 from p4_mininet import P4Switch, P4Host
 from mininet.log import setLogLevel
 from mininet.net import Mininet
@@ -153,7 +157,7 @@ class ExerciseRunner:
 
 
     def __init__(self, topo_file, log_dir, pcap_dir,
-                       switch_json, bmv2_exe='simple_switch', quiet=False):
+                       switch_json, bmv2_exe='simple_switch', quiet=False,queue=None):
         """ Initializes some attributes and reads the topology json. Does not
             actually run the exercise. Use run_exercise() for that.
 
@@ -166,7 +170,7 @@ class ExerciseRunner:
                 bmv2_exe    : string  // Path to the p4 behavioral binary
                 quiet : bool          // Enable/disable script debug messages
         """
-
+        self.queue=queue
         self.quiet = quiet
         self.logger('Reading topology file.')
         with open(topo_file, 'r') as f:
@@ -195,8 +199,10 @@ class ExerciseRunner:
         # Initialize mininet with the topology specified by the config
         self.create_network()
         self.net.start()
-
+        
+        
         # these  below code add in 2020-8-15
+        
         for temp in self.net.switches:
             self.list_config.append({"name":temp.name,"thrift_port": temp.thrift_port,"grpc_port":temp.grpc_port})
         sleep(1)
@@ -215,7 +221,7 @@ class ExerciseRunner:
 
         # wait for that to finish. Not sure how to do this better
         sleep(1)
-
+        self.queue.put(self.net)
         self.do_net_cli()
         # stop right after the CLI is exited
         self.net.stop()
@@ -278,7 +284,7 @@ class ExerciseRunner:
         intFname1 = "con-eth0"
         switch_outside1 = self.net.switches[6]
         _intf_1 = Intf(intFname1, node=switch_outside1, port=255)
-
+        
 
 
     def program_switch_p4runtime(self, sw_name, sw_dict):
@@ -392,9 +398,11 @@ class ExerciseRunner:
             print('corresponding txt file in %s:' % self.log_dir)
             print(' for example run:  cat %s/s1-p4runtime-requests.txt' % self.log_dir)
             print('')
+        event=Event()
+        event.wait()
+        # CLI(self.net)
 
-        CLI(self.net)
-
+        
 
 def get_args():
     cwd = os.getcwd()
@@ -412,16 +420,22 @@ def get_args():
                                 type=str, required=False, default='simple_switch')
     return parser.parse_args()
 
-
+def topology_change(queue):
+    net=queue.get()
+    # while True:
+    print(net.nameToNode)
+    
 if __name__ == '__main__':
     # from mininet.log import setLogLevel
 
-
+    obj_queue=Queue.Queue(10)
     # setLogLevel('info')
 
     args = get_args()
     exercise = ExerciseRunner(args.topo, args.log_dir, args.pcap_dir,
-                              args.switch_json, args.behavioral_exe, args.quiet)
-
-    exercise.run_exercise()
-
+                              args.switch_json, args.behavioral_exe, args.quiet,queue=obj_queue)
+    p=ThreadPoolExecutor(5)
+    p.submit(exercise.run_exercise)
+    p.submit(topology_change,obj_queue)
+    
+    

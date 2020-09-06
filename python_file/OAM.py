@@ -41,40 +41,51 @@ class Oam:
         self.iface=iface
         self.path_dir = path_dir
         Oam.share_data(self.path_dir)
+        Oam.share_namespace_id_list(self.path_dir)
         self.queue=queue
   
     @classmethod
     def share_data(cls,path):
-        cls.namesapce_id_list=list()
-        with open(path+"config.json", mode="r") as f:
-            cls.config_list = json.load(f)
-            f.close()
-        for tmp in cls.config_list:
-            if "sid" in tmp.keys() and "name" in tmp.keys():
-                cls.rel[tmp["name"]] = tmp["sid"]
-                cls.sid_to_name[tmp["sid"]] = tmp["name"] 
-         
-            if "ipv6_address" in tmp.keys() and "sid" in tmp.keys():
-                cls.rel_ip[tmp["ipv6_address"]] = tmp["sid"]
+        while True:
+            if os.path.isfile(path+"config.json"):
+                with open(path+"config.json", mode="r") as f:
+                    cls.config_list = json.load(f)
+                    f.close()
+                for tmp in cls.config_list:
+                    if "sid" in tmp.keys() and "name" in tmp.keys():
+                        cls.rel[tmp["name"]] = tmp["sid"]
+                        cls.sid_to_name[tmp["sid"]] = tmp["name"] 
                 
-            
-        with open(path+"peer.json") as f1:
-            path_dict = json.load(f1)
-            f1.close
-        for x , y in path_dict.items():
-            for tmp in y.values():
-                cls.namesapce_id_list.append([cls.rel[tmp[0]],cls.rel[x]])
-        list_tmp=copy.deepcopy(cls.namesapce_id_list)
-        with open (path+"namespace.json",mode="w") as f2:
-            for tmp in list_tmp:
-                tmp[0]=cls.sid_to_name[tmp[0]]
-                tmp[1]=cls.sid_to_name[tmp[1]]
-                tmp.reverse()
-            
-            json.dump(list_tmp,f2)
-            # print(cls.namesapce_id_list)
-            f2.close
-    
+                    if "ipv6_address" in tmp.keys() and "sid" in tmp.keys():
+                        cls.rel_ip[tmp["ipv6_address"]] = tmp["sid"]
+                break
+            else:
+                continue
+                    
+    @classmethod
+    def share_namespace_id_list(cls,path):
+        cls.namesapce_id_list=list() 
+        while True: 
+            if os.path.isfile(path+"peer.json"):
+                with open(path+"peer.json") as f1:
+                    path_dict = json.load(f1)
+                    f1.close
+                for x , y in path_dict.items():
+                    for tmp in y.values():
+                        cls.namesapce_id_list.append([cls.rel[tmp[0]],cls.rel[x]])
+                list_tmp=copy.deepcopy(cls.namesapce_id_list)
+                with open (path+"namespace.json",mode="w") as f2:
+                    for tmp in list_tmp:
+                        tmp[0]=cls.sid_to_name[tmp[0]]
+                        tmp[1]=cls.sid_to_name[tmp[1]]
+                        tmp.reverse()
+                    
+                    json.dump(list_tmp,f2)
+                    # print(cls.namesapce_id_list)
+                    f2.close
+                break
+            else:
+                continue
     def generate_address_list(self,namespace_id,sequence,*address_list):
         address_list_tmp=list(address_list)
         namespace_id = bitstring.pack('uintbe:16',namespace_id).hex
