@@ -53,7 +53,7 @@ class Send_Packet:
              addresses=address_list)/\
             IPv6(plen=0,  fl=ipv6_flow_id,src="2555::255", dst="2555::255")
         sendp(pkt, iface="con-eth0",verbose=False)
-
+  
     def send_packet(self):
         if isinstance(self.sequence,int) and isinstance(self.flag,int) and self.address_list == None:
             while True:
@@ -86,7 +86,7 @@ class Send_Packet:
                 print("error")
                 break
             
-   
+    
 if __name__ == "__main__":
     parse_packet = Parse()
     send_packet = Send_Packet()
@@ -112,4 +112,4 @@ if __name__ == "__main__":
     #         print("error")
     #         break
 
-    Send_Packet.send_oam_probe_packet(["2006::6","2005::5","2003::3","2001::1","0001:0000:6800:0000:0000:0000:0000:0001"],1)
+    Send_Packet.send_oam_probe_packet(["2006::6","2005::5","2003::3","2001::1","00010000680000000000000000000001"],1)

@@ -1,4 +1,6 @@
 #!/usr/bin/python
+
+from google import protobuf
 import bitstring
 from scapy.all import *
 import json
@@ -12,6 +14,7 @@ class Udld:
     path_dict = dict()
     rel = dict()
     
+    
     def __init__(self,filter="outbound", iface="con-eth0",path_dir="../build/"):
         self.connect =dict()
         self.filter = filter
@@ -20,7 +23,7 @@ class Udld:
         self.sequence = 1
         Udld.share_data(self.path_dir)
         
-            
+        
 
     @classmethod
     def share_data(cls,path):
@@ -46,6 +49,7 @@ class Udld:
         str1=chr(flag)
         pkt = Ether(type=0x8870)/LLC()/SNAP(OUI=0x00000C,code=0x0111)/Raw(load=" %s\0\0\0\a\0\b%s"%(str1,str2))
         sendp(pkt, iface="con-eth0",verbose=False)
+
     def update_peer_json(self):
         print("start update")
         for x ,y in Udld.path_dict.items():
@@ -100,8 +104,9 @@ class Udld:
     @with_goto
     def parse_udld(self,pkt_raw):
         try:
-            pkt=pkt_raw[1].load[8:]
             
+            pkt=pkt_raw[3].load
+
         except:
             print("error!")
             return
@@ -109,6 +114,7 @@ class Udld:
         Opcode=int(bitstring.BitArray(bytes=pkt)[3:8].bin,2) 
         flag=int(bitstring.BitArray(bytes=pkt)[8:16].bin,2)
         if Opcode == 2:
+            print("shoudaobao")
             device_id_raw = pkt[8:12]
             peer_id_raw = pkt[16:20]
             port_id_raw = pkt[20:24]
@@ -125,9 +131,9 @@ class Udld:
             peer_id = str(p1)+"."+str(p2)+"."+str(p3)+"."+str(p4)
             port_id = bitstring.BitArray(bytes=port_id_raw).unpack("uintbe:32")[0]
             sequence_number = bitstring.BitArray(bytes=sequence_number_raw).unpack("uintbe:32")[0]
-            # print(device_id,peer_id,port_id,sequence_number)
-            
+        
             if device_id in Udld.rel.keys():
+        
                 label.begin
                 if Udld.rel[device_id] not in Udld.path_dict.keys():
                     Udld.path_dict[Udld.rel[device_id]] = {port_id:[Udld.rel[peer_id], sequence_number]}
@@ -136,12 +142,12 @@ class Udld:
                         Udld.update_peer_json() 
                 else:
                     if port_id not in Udld.path_dict[Udld.rel[device_id]].keys():
-                        Udld.path_dict[Udld.rel[device_id]][port_id] =[peer_id,sequence_number]
+                        Udld.path_dict[Udld.rel[device_id]][port_id] =[Udld.rel[peer_id],sequence_number]
                         # print("new port success")
                         if sequence_number >3:
                             Udld.update_peer_json()
                     elif peer_id != Udld.path_dict[Udld.rel[device_id]][port_id][0] and sequence_number >= Udld.path_dict[Udld.rel[device_id]][port_id][1] :
-                        Udld.path_dict[Udld.rel[device_id]][port_id][0]=peer_id
+                        Udld.path_dict[Udld.rel[device_id]][port_id][0]=Udld.rel[peer_id]
                         Udld.path_dict[Udld.rel[device_id]][port_id][1]=sequence_number
                         # print("new peer success")
                         if sequence_number>3:
@@ -150,7 +156,8 @@ class Udld:
                         Udld.path_dict[Udld.rel[device_id]][port_id][1]=sequence_number
                         if sequence_number>3:
                             Udld.update_peer_json()
-                        # print("new sequence")               
+                        # print("new sequence") 
+                              
             else:
                 Udld.share_data(self.path_dir)
                 if device_id in Udld.rel.keys():
@@ -158,7 +165,7 @@ class Udld:
                 else:
                     print("error")
                     return 
-                                       
+                                   
     def parse_packet(self,pkt_raw):       
         try:
             #34525==0x86dd IPV6
@@ -172,12 +179,14 @@ class Udld:
             return
     def moniter(self):
         con_eth0 = sniff(prn=self.parse_packet, filter=self.filter, store=0, iface=self.iface)  
+
 if __name__ == "__main__":
     obj1 = Udld()
     obj2 = Udld()
     p1=ThreadPoolExecutor(5)
-    p1.submit(obj2.send_udld_request)
     p1.submit(obj1.moniter)
+    p1.submit(obj2.send_udld_request)
+    
     
 
 

@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/python
 import subprocess
 from scapy.all import *
 
@@ -10,14 +10,15 @@ from scapy.all import *
 
 
 def send_probe(address_list):
-    pkt = Ether()/ IPv6(plen=48+16*len(address_list), src="2555::255", dst="2001::1") / \
+    pkt = Ether()/ IPv6(plen=48+16*len(address_list), src="2555::255", dst="2003::3") / \
         IPv6ExtHdrSegmentRouting(nh=41,len=len(address_list)*2, segleft=len(address_list)-2, lastentry=len(address_list)-1, oam=1,
          addresses=address_list)/\
         IPv6(plen=0,  fl=1,src="2555::255", dst="2555::255")
-    sendp(pkt, iface="con-eth0",verbose=False)
+    sendp(pkt, iface="con-eth0")
 
 
 
 
-send_probe(["2006::6","2005::5", "2002::2", "2001::1", "0001:0000:6a08:0000:0000:0001:0000:0001"])
+if __name__ == "__main__":
+    send_probe(["2004::4", "2003::3", "0001:0000:6a08:0000:0000:0001:0000:0001"])
 # con_eth0 = sniff(prn=parse_packet,filter="udp",store=0,iface=["con-eth0"])
