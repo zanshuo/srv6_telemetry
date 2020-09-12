@@ -143,7 +143,7 @@ class Oam:
                 dict_metric=dict()
                 conn=sqlite3.connect("../db/telemetry.db")
                 cursor = conn.cursor()
-                cursor.execute("select src,export_timestap,export_transit_delay from data_list where namespace_id = %d and sequencenumber=%d"%(data["namespace_id"],data["sequence"]))
+                cursor.execute("select src,export_timestap,export_transit_delay from data_list where namespace_id=%d and sequencenumber=%d and flowid=0"%(data["namespace_id"],data["sequence"]))
                 values=cursor.fetchall()
                 for tmp in values:
                     dict_metric[tmp[0]]={"export_timestap":tmp[1],"export_transit_delay":tmp[2]}
@@ -214,7 +214,8 @@ class Oam:
                         print("ack packet don't receieve")
                     count_ack=0
 
-
+    def parse_interested_flow(self):
+        pass
     def parse_oam(self,pkt_raw):
         
         data_dict = OrderedDict()
@@ -263,7 +264,7 @@ class Oam:
             dex_dict = OrderedDict(src=src_Ipv6_addr,flowid=flowid, sequencenumber=sequencenumber,namespace_id=namespace_id,tracetype=tracetype_raw.bin, flags=flags, reserved=reserved)
             list_tracetype = "".join(tracetype_raw.bin)
                 # 23- real_sequence=list_sequence
-          
+
             if (list_tracetype[1] == "1"):
                 print("export_port")
                 ingress_port = bitstring.BitArray(bytes=pkt[start_byte_number:start_byte_number+2]).unpack("uintbe:16")[0]
@@ -278,15 +279,21 @@ class Oam:
                 print("export_transit_delay")
                 data_dict["export_transit_delay"] = bitstring.BitArray(bytes=pkt[start_byte_number:start_byte_number+8]).unpack("uintbe:64")[0]
                 start_byte_number = start_byte_number+8
+              
             if (list_tracetype[6]== "1"):
                 print("export_dequene_length")
                 data_dict["export_dequene_length"] = bitstring.BitArray(bytes=pkt[start_byte_number:start_byte_number+4]).unpack("uintbe:32")[0]
                 start_byte_number = start_byte_number+4
+            else:
+                data_dict["export_dequene_length"]=0
             if (list_tracetype[12] == "1"):
                 print("export_enquene_length")
                 data_dict["export_enquene_length"] = bitstring.BitArray(bytes=pkt[start_byte_number:start_byte_number+4]).unpack("uintbe:32")[0]
                 start_byte_number = start_byte_number+4
+            else:
+                data_dict["export_enquene_length"]=0
             if(list_tracetype[23] == "1"):
+                print("exprt_packet_length")
                 data_dict["export_packet_length"] = bitstring.BitArray(bytes=pkt[start_byte_number:start_byte_number+4]).unpack("uintbe:32")[0]
                 start_byte_number =start_byte_number+4
             else:
@@ -334,6 +341,6 @@ if __name__ == "__main__":
     obj3 = Oam(queue)
     p1=ThreadPoolExecutor(5)
     p1.submit(obj1.moniter)
-    p1.submit(obj2.send_oam_request)
-    p1.submit(obj3.parse_metric)
+    # p1.submit(obj2.send_oam_request)
+    # p1.submit(obj3.parse_metric)
    

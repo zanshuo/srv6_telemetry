@@ -308,7 +308,7 @@ control MyIngress(inout headers hdr,inout metadata meta,inout standard_metadata_
         }
      }
     /**插入的IPV6转发*/
-
+    
     action insert_ipv6_forward(bit<9> port){
         stdmeta.egress_spec = port;
         hdr.insert_ipv6.hoplimit = hdr.insert_ipv6.hoplimit - 1;
@@ -322,7 +322,7 @@ control MyIngress(inout headers hdr,inout metadata meta,inout standard_metadata_
 //        ingress_global_timestamp.write(1,(bit<32>)stdmeta.ingress_global_timestamp);
 //        meta.user_meta.ingress_global_timestamp = stdmeta.ingress_global_timestamp;
     }
-
+    
 //    /**原始IPV4转发*/
 //    action ipv4_forward(bit<9> port){
 //        stdmeta.egress_spec = port;

@@ -149,7 +149,7 @@ class P4Switch(Switch):
             exit(1)
         info("P4 switch {} has been started.\n".format(self.name))
 
-    def stop(self):
+    def stop(self,deleteIntfs):
         "Terminate P4 switch."
         self.output.flush()
         self.cmd('kill %' + self.sw_path)

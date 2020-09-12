@@ -25,8 +25,8 @@ from threading import Event
 import os, sys, json, subprocess, re, argparse
 from time import sleep
 import Queue
-from gevent import event
 
+import socket
 from p4_mininet import P4Switch, P4Host
 from mininet.log import setLogLevel
 from mininet.net import Mininet
@@ -38,6 +38,7 @@ from p4runtime_switch import P4RuntimeSwitch
 import p4runtime_lib.simple_controller
 sys.path.append("./python_file")
 from sync_time import main_delta
+
 
 def configureP4Switch(**switch_args):
     """ Helper class that is called by mininet to initialize
@@ -117,6 +118,7 @@ class ExerciseTopo(Topo):
 
 
     def parse_switch_node(self, node):
+        print(node.split("-"))
         assert(len(node.split('-')) == 2)
         sw_name, sw_port = node.split('-')
         try:
@@ -224,9 +226,24 @@ class ExerciseRunner:
         self.queue.put(self.net)
         self.do_net_cli()
         # stop right after the CLI is exited
-        self.net.stop()
+        # self.net.stop()
 
-
+    def change_topology(self):
+        ip_port=('127.0.0.1',9001)
+        udp_server_socket=socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+        udp_server_socket.bind(ip_port)
+        
+        while True:
+            msg,addr=udp_server_socket.recvfrom(1024)
+            
+            try:
+                exec(msg)
+            except Exception as e:
+                print(e)
+                udp_server_socket.sendto("fail",addr)
+                continue
+            udp_server_socket.sendto("success",addr)    
+            print(self.net.switches)
     def parse_links(self, unparsed_links):
         """ Given a list of links descriptions of the form [node1, node2, latency, bandwidth]
             with the latency and bandwidth being optional, parses these descriptions
@@ -238,7 +255,8 @@ class ExerciseRunner:
             s, t, = link[0], link[1]
             if s > t:
                 s,t = t,s
-
+            if t in self.hosts.keys():
+                s,t=t,s
             link_dict = {'node1':s,
                         'node2':t,
                         'latency':'0ms',
@@ -252,8 +270,10 @@ class ExerciseRunner:
             if len(link)>4 :
                 link_dict['max_queue_size'] = link[4]
 
-            if link_dict['node1'][0] == 'h':
-                assert link_dict['node2'][0] == 'r' or link_dict['node2'][0] == 's', 'Hosts should be connected to switches, not ' + str(link_dict['node2'])
+            # if link_dict['node1'][0] == 'h':
+            #     assert link_dict['node2'][0] == 'r' or link_dict['node2'][0] == 's', 'Hosts should be connected to switches, not ' + str(link_dict['node2'])
+            if link_dict['node1'] in self.hosts.keys():
+                assert link_dict['node2'].split("-")[0] in self.switches.keys(),'Hosts should be connected to switches, not ' + str(link_dict['node2'])
             links.append(link_dict)
         return links
 
@@ -346,7 +366,9 @@ class ExerciseRunner:
                     if "sid" in sw_dict:
                         tmp["sid"] = sw_dict["sid"]   
                     if "mac_address" in sw_dict:
-                        tmp["mac_address"] = sw_dict["mac_address"]   
+                        tmp["mac_address"] = sw_dict["mac_address"]
+                    if "alias" in sw_dict:
+                        tmp["alias"] = sw_dict["alias"] 
                   
 
 
@@ -398,10 +420,12 @@ class ExerciseRunner:
             print('corresponding txt file in %s:' % self.log_dir)
             print(' for example run:  cat %s/s1-p4runtime-requests.txt' % self.log_dir)
             print('')
-        event=Event()
-        event.wait()
-        # CLI(self.net)
-
+        # event=Event()
+        # event.wait()
+        
+        CLI(self.net)
+        
+        
         
 
 def get_args():
@@ -422,20 +446,38 @@ def get_args():
 
 def topology_change(queue):
     net=queue.get()
+    print("start udp")
+    ip_port=('127.0.0.1',9001)
+    udp_server_socket=socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+    udp_server_socket.bind(ip_port)
+  
     # while True:
-    print(net.nameToNode)
+    #     msg,addr=udp_server_socket.recvfrom(1024)
+    #     print(msg)
+    #     try:
+    #         exec(msg)
+    #     except Exception as e:
+    #         print(e)
+    #     print(net.switches)
+    # while True:
+    # print(net.nameToNode)
     
 if __name__ == '__main__':
     # from mininet.log import setLogLevel
-
+    
     obj_queue=Queue.Queue(10)
     # setLogLevel('info')
-
+    
     args = get_args()
     exercise = ExerciseRunner(args.topo, args.log_dir, args.pcap_dir,
                               args.switch_json, args.behavioral_exe, args.quiet,queue=obj_queue)
-    p=ThreadPoolExecutor(5)
-    p.submit(exercise.run_exercise)
-    p.submit(topology_change,obj_queue)
+
+    
+    
+    # p=ThreadPoolExecutor(5)
+    # p.submit(exercise.run_exercise)
+    # p.submit(topology_change,obj_queue)
+    exercise.run_exercise()
+    
     
     

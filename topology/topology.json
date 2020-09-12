@@ -17,7 +17,7 @@
     },
     "switches": {
         "r1": { "cli_input" : "thrift_command/r1.txt","ipv4_address": "11.11.11.11","ipv6_address": "2011::11","sid": "2001::1",
-            "mac_address":"08:00:00:00:01:11"},
+            "mac_address":"08:00:00:00:01:11","alias":"core_switch_1"},
         "r2": { "cli_input" : "thrift_command/r2.txt","ipv4_address": "22.22.22.22","ipv6_address": "2022::22","sid": "2002::2",
         "mac_address":"08:00:00:00:02:22"},
         "r3": { "cli_input" : "thrift_command/r3.txt","ipv4_address": "33.33.33.33","ipv6_address": "2033::33","sid": "2003::3",
