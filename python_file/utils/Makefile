@@ -50,3 +50,4 @@ dirs:
 clean: stop
 	rm -f *.pcap
 	rm -rf $(BUILD_DIR) $(PCAP_DIR) $(LOG_DIR)
+	rm -f db/*
