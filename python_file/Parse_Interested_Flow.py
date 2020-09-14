@@ -1,4 +1,6 @@
 #!/usr/bin/python
+from os import path
+from sqlite3.dbapi2 import connect
 import sys
 sys.path.insert(0,"../../behavioral-model/tools/")
 sys.path.insert(1,"../../behavioral-model/targets/simple_switch")
@@ -22,8 +24,9 @@ class Parse_interested_flow:
         self.namespace_id=namespace_id
         self.path_list=list()
         self.start_sequence=1
-        self.total_packet_count=0
-        self.total_packet_length=0
+        self.total_real_packet_count=0
+        self.total_real_packet_length=0
+        self.total_packet_loss=0
         self.node_data_dict=dict()
         self.link_delay_dict=dict()
         Parse_interested_flow.share_data(self.path)
@@ -75,7 +78,7 @@ class Parse_interested_flow:
         
     def read_register(self):
         while True:
-            sleep(2)
+            sleep(5)
             self.generate_data()
             # f=open(self.path+"namespaceid_for_path.json",mode="r")
             # path_dict=json.load(f)
@@ -111,10 +114,18 @@ class Parse_interested_flow:
             values=cursor.fetchall()
             # print(values)
             cursor.close()
-            if len(values) == len(self.path_list):
-                flag=[tmp[0] in self.path_list for tmp in values]
-                if False not in flag:
-                    # dict_data=dict()
+            if values == []:
+                for tmp in self.path_list:
+                    self.node_data_dict[tmp]["receive_packet_count"]+=1
+                    self.node_data_dict[tmp]["loss_packet_count"]+=1
+                self.total_packet_loss+=1
+                continue
+            flag=[tmp[0] in self.path_list for tmp in values]
+            if False not in flag:
+                if len(values) == len(self.path_list):
+                    
+                    
+                        # dict_data=dict()
                     for x in values:
                         if self.node_data_dict[x[0]]["export_transit_delay"] == None:
                             self.node_data_dict[x[0]]["export_transit_delay"] = [x[2],]
@@ -128,8 +139,8 @@ class Parse_interested_flow:
                             self.node_data_dict[x[0]]["loss_packet_count"]=0
                         self.node_data_dict[x[0]]["export_timestap"]=x[1]
                         if x[0] ==self.path_list[0]:
-                            self.total_packet_length=self.total_packet_length+x[3]
-                    self.total_packet_count+=1
+                            self.total__real_packet_length=self.total_real_packet_length+x[3]
+                    self.total_real_packet_count+=1
                     for serial in range(len(self.path_list)):
                         if serial == len(self.path_list)-1:
                             break
@@ -140,11 +151,23 @@ class Parse_interested_flow:
                             self.link_delay_dict[Parse_interested_flow.sid_to_name[self.path_list[serial]]+"-"+Parse_interested_flow.sid_to_name[self.path_list[serial+1]]]= [link_delay,]
                         else:
                             self.link_delay_dict[Parse_interested_flow.sid_to_name[self.path_list[serial]]+"-"+Parse_interested_flow.sid_to_name[self.path_list[serial+1]]].append(link_delay)
-                else:
-                    continue
-            elif len(values)<len(self.path_list):
-                pass
-            
+                    
+                elif len(values)<len(self.path_list):
+                    path_list=copy.deepcopy(self.path_list)
+                    values_list=[ tmp_value[0] for tmp_value in values]
+                    for serial in range(len(path_list)):
+                        
+                            
+                        if path_list[serial] not in values_list:
+                            if serial == 0 :
+                                pass
+                            elif path_list[serial-1] in values_list:
+                                
+                                
+                            
+                                
+            else:
+                continue
         self.start_sequence =sequence+1 
         node_dict=dict()
         link_dict=dict()

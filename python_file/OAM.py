@@ -13,16 +13,15 @@ from multiprocessing import Process
 import os
 import shelve
 import Queue
-from threading import Event
+
 class Oam:
     config_list = list()
-    rel = dict()
-    rel_ip=dict()
+    name_to_sid = dict()
+    ipv6_address_to_sid=dict()
     namesapce_id_list=list()
     sequence = 1
     ipv6_flow_id = 1
     ack_list=list()
-    event=Event()
     sid_to_name = dict()
     try:
         conn=sqlite3.connect("../db/telemetry.db")
@@ -53,11 +52,11 @@ class Oam:
                     f.close()
                 for tmp in cls.config_list:
                     if "sid" in tmp.keys() and "name" in tmp.keys():
-                        cls.rel[tmp["name"]] = tmp["sid"]
+                        cls.name_to_sid[tmp["name"]] = tmp["sid"]
                         cls.sid_to_name[tmp["sid"]] = tmp["name"] 
                 
                     if "ipv6_address" in tmp.keys() and "sid" in tmp.keys():
-                        cls.rel_ip[tmp["ipv6_address"]] = tmp["sid"]
+                        cls.ipv6_address_to_sid[tmp["ipv6_address"]] = tmp["sid"]
                 break
             else:
                 continue
@@ -72,7 +71,7 @@ class Oam:
                     f1.close
                 for x , y in path_dict.items():
                     for tmp in y.values():
-                        cls.namesapce_id_list.append([cls.rel[tmp[0]],cls.rel[x]])
+                        cls.namesapce_id_list.append([cls.name_to_sid[tmp[0]],cls.name_to_sid[x]])
                 list_tmp=copy.deepcopy(cls.namesapce_id_list)
                 with open (path+"namespace.json",mode="w") as f2:
                     for tmp in list_tmp:
@@ -128,7 +127,7 @@ class Oam:
             # self.queue.put("stop")
             Oam.sequence+=1
             sleep(10)
-            # Oam.event.set()
+        
 
     @with_goto                
     def parse_metric(self):
@@ -246,8 +245,8 @@ class Oam:
             try:
                 # pkt_raw.show()
                 src_Ipv6_addr = pkt_raw[1].src
-                if src_Ipv6_addr in Oam.rel_ip.keys():
-                    src_Ipv6_addr = Oam.rel_ip[src_Ipv6_addr]
+                if src_Ipv6_addr in Oam.ipv6_address_to_sid.keys():
+                    src_Ipv6_addr = Oam.ipv6_address_to_sid[src_Ipv6_addr]
                 # print(src_Ipv6_addr)
                 pkt = pkt_raw[3].load
             except:
@@ -300,15 +299,23 @@ class Oam:
                 data_dict["export_packet_length"] = 0
             dex_dict["data"] = data_dict
             # print(dex_dict)
-            conn=sqlite3.connect("../db/telemetry.db")
-            cursor = conn.cursor()
-            cursor.execute("insert into data_list values('%s','%s','%d','%d','%d','%d','%d','%d','%d','%d','%d','%d','%d','%d')"
-                         %(dex_dict["src"],dex_dict["tracetype"],dex_dict["namespace_id"],dex_dict["reserved"],dex_dict["sequencenumber"],dex_dict["flowid"],dex_dict["flags"],data_dict["export_port"][0],
-                         data_dict["export_port"][1],data_dict["export_timestap"],data_dict["export_transit_delay"],data_dict["export_dequene_length"],data_dict["export_enquene_length"],
-                         data_dict["export_packet_length"]))
-            cursor.close()
-            conn.commit()
-            conn.close()
+            try:
+                conn=sqlite3.connect("../db/telemetry.db")
+                cursor = conn.cursor()
+                
+                cursor.execute("delete from data_list where src='%s' and namespace_id=%d and sequencenumber=%d and flowid=%d"%(dex_dict["src"],dex_dict["namespace_id"],dex_dict["sequencenumber"],dex_dict["flowid"]))
+            
+                cursor.execute("insert into data_list values('%s','%s','%d','%d','%d','%d','%d','%d','%d','%d','%d','%d','%d','%d')"
+                                %(dex_dict["src"],dex_dict["tracetype"],dex_dict["namespace_id"],dex_dict["reserved"],dex_dict["sequencenumber"],dex_dict["flowid"],dex_dict["flags"],data_dict["export_port"][0],
+                                data_dict["export_port"][1],data_dict["export_timestap"],data_dict["export_transit_delay"],data_dict["export_dequene_length"],data_dict["export_enquene_length"],
+                                data_dict["export_packet_length"]))
+                conn.commit()
+                cursor.close()
+                
+                
+            except Exception as e:
+                print(e)
+
             # if os.path.isdir(self.path_dir):
             #     with open(self.path_dir+"/data_list.json",mode="a") as f1:
             #         f1.write(json.dumps(dex_dict)+"\n")

@@ -31,7 +31,7 @@ class Parse:
                 cls.rel[tmp["ipv4_address"]] = tmp["name"]
 
    
-
+    
     def parse_oam(self,pkt_raw):
         data_dict = OrderedDict()
         if pkt_raw[1].nh == 59:
