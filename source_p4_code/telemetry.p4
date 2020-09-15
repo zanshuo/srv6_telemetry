@@ -931,7 +931,7 @@ control MyEgress(inout headers hdr, inout metadata meta, inout standard_metadata
         */
         
         register<bit<48>>(2) ingress_global_timestamp;
-
+        register<bit<48>>(3) enq_timestamp;
 //    action insert_ipv6_forward(bit<9> port){
 //        stdmeta.egress_spec = port;
 //        hdr.insert_ipv6.hoplimit = hdr.insert_ipv6.hoplimit - 1;
@@ -986,14 +986,18 @@ control MyEgress(inout headers hdr, inout metadata meta, inout standard_metadata
     //报告节点转发延迟 在队列中的时间+（进入队列时间-进入ingress时间） 进入队列时间是已经处理完pipeline后开始进入发送队列的时间
     action export_transit_delay(){
         bit<48> enq_timestap = (bit<48>)stdmeta.enq_timestamp;
-      
+        enq_timestamp.write(0,(bit<48>)stdmeta.enq_timestamp);
+        
         
         if (enq_timestap < meta.user_meta.ingress_global_timestamp){
-            enq_timestap= enq_timestap + 4294967296*(meta.user_meta.ingress_global_timestamp/4294967296);
-            if (enq_timestap < meta.user_meta.ingress_global_timestamp){
+            enq_timestap = enq_timestap + 4294967296*(meta.user_meta.ingress_global_timestamp/4294967296);
+          
+        }
+        enq_timestamp.write(1,enq_timestap);
+        if (enq_timestap < meta.user_meta.ingress_global_timestamp){
                 enq_timestap= enq_timestap + 4294967296;
             }
-        }
+        enq_timestamp.write(2,enq_timestap);
         bit<48> tmp = (bit<48>)stdmeta.deq_timedelta + enq_timestap - meta.user_meta.ingress_global_timestamp;
         hdr.data_list_h[3].setValid();
         hdr.data_list_h[3].data = 16w0 ++ tmp[47:32];

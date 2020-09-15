@@ -303,7 +303,7 @@ class Oam:
                 conn=sqlite3.connect("../db/telemetry.db")
                 cursor = conn.cursor()
                 
-                cursor.execute("delete from data_list where src='%s' and namespace_id=%d and sequencenumber=%d and flowid=%d"%(dex_dict["src"],dex_dict["namespace_id"],dex_dict["sequencenumber"],dex_dict["flowid"]))
+                # cursor.execute("delete from data_list where src='%s' and namespace_id=%d and sequencenumber=%d and flowid=%d"%(dex_dict["src"],dex_dict["namespace_id"],dex_dict["sequencenumber"],dex_dict["flowid"]))
             
                 cursor.execute("insert into data_list values('%s','%s','%d','%d','%d','%d','%d','%d','%d','%d','%d','%d','%d','%d')"
                                 %(dex_dict["src"],dex_dict["tracetype"],dex_dict["namespace_id"],dex_dict["reserved"],dex_dict["sequencenumber"],dex_dict["flowid"],dex_dict["flags"],data_dict["export_port"][0],
