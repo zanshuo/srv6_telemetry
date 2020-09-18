@@ -110,7 +110,8 @@ class Oam:
         return pkt
 
     def send_oam_request(self):
-        for i in range(2):
+        # for i in range(2):
+        while True:
             try:
                 print(Oam.namesapce_id_list)
                 for namesapce_id ,address_list in enumerate(Oam.namesapce_id_list):
@@ -303,7 +304,7 @@ class Oam:
                 conn=sqlite3.connect("../db/telemetry.db")
                 cursor = conn.cursor()
                 
-                # cursor.execute("delete from data_list where src='%s' and namespace_id=%d and sequencenumber=%d and flowid=%d"%(dex_dict["src"],dex_dict["namespace_id"],dex_dict["sequencenumber"],dex_dict["flowid"]))
+                cursor.execute("delete from data_list where src='%s' and namespace_id=%d and sequencenumber=%d and flowid=%d"%(dex_dict["src"],dex_dict["namespace_id"],dex_dict["sequencenumber"],dex_dict["flowid"]))
             
                 cursor.execute("insert into data_list values('%s','%s','%d','%d','%d','%d','%d','%d','%d','%d','%d','%d','%d','%d')"
                                 %(dex_dict["src"],dex_dict["tracetype"],dex_dict["namespace_id"],dex_dict["reserved"],dex_dict["sequencenumber"],dex_dict["flowid"],dex_dict["flags"],data_dict["export_port"][0],
@@ -348,6 +349,6 @@ if __name__ == "__main__":
     obj3 = Oam(queue)
     p1=ThreadPoolExecutor(5)
     p1.submit(obj1.moniter)
-    # p1.submit(obj2.send_oam_request)
-    # p1.submit(obj3.parse_metric)
+    p1.submit(obj2.send_oam_request)
+    p1.submit(obj3.parse_metric)
    

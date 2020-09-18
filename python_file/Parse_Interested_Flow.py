@@ -109,8 +109,9 @@ class Parse_interested_flow:
                 if count<3:
                     sleep(0.2)
                     count+=1
-                    
                     goto.begin
+                else:
+                    count=0
                 for tmp in self.path_list:
                     if self.node_data_dict[tmp]["receive_packet_count"]==None:
                         self.node_data_dict[tmp]["receive_packet_count"]=1
@@ -157,6 +158,8 @@ class Parse_interested_flow:
                         sleep(0.2)
                         count+=1
                         goto.begin
+                    else:
+                        count=0
                     path_list=copy.deepcopy(self.path_list)
                     values_list=[tmp_value[0] for tmp_value in values]
                     
