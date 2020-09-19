@@ -10,7 +10,8 @@ import networkx as nx
 from sync_time import thrift_connect
 import time
 import datetime
-from concurrent.futures import ThreadPoolExecutor
+from watchdog.observers import Observer
+from watchdog.events import *
 class Compute_Topology:
     
     config_list=list()
@@ -182,7 +183,34 @@ class Compute_Topology:
     def trigger_compute(self):
         while True:
             pass
-        
+    class MyHandler(FileSystemEventHandler):
+        def __init__(self,path_dir):
+            self.path_dir=path_dir
+        def on_modified(self, event):
+            if event.src_path==self.path_dir+"peer.json":
+                print("peer change")
+                Compute_Topology.share_data_peer(self.path_dir)
+            elif event.src_path==self.path_dir+"config.json":
+                print("config change")
+                Compute_Topology.share_data(self.path_dir)
+            print("文件 change %s"%event.src_path)
+    
+        def on_created(self, event):
+            pass
+        def on_deleted(self, event):
+            pass
+    def moniter_file(self):
+        path_peer_json = self.path_dir+"peer.json"
+        path_config_json=self.path_dir+"config.json"
+        event_handler = self.MyHandler(self.path_dir)
+        observer_config_json = Observer()
+        observer_config_json.schedule(event_handler, path_config_json, recursive=True)
+        observer_config_json.start()
+        observer_peer_json=Observer()
+        observer_peer_json.schedule(event_handler, path_peer_json, recursive=True)
+        observer_peer_json.start()
+        while True:
+            pass  
 if __name__ == "__main__":
     obj1=Compute_Topology("../build/")
     obj1.compute_path()

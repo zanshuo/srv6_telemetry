@@ -4,6 +4,7 @@ from sqlite3.dbapi2 import connect
 import sys
 sys.path.insert(0,"../../behavioral-model/tools/")
 sys.path.insert(1,"../../behavioral-model/targets/simple_switch")
+from concurrent.futures import ThreadPoolExecutor
 from goto import with_goto
 from sync_time import thrift_connect
 import sqlite3
@@ -11,6 +12,8 @@ import os
 import json
 import copy
 from time import sleep
+from watchdog.observers import Observer
+from watchdog.events import *
 class Parse_interested_flow:
     config_list=list()
     name_to_sid=dict()
@@ -57,9 +60,14 @@ class Parse_interested_flow:
                 continue
     @classmethod
     def share_path(cls,path):
-        f=open(path+"namespaceid_for_path.json",mode="r")
-        cls.path_dict=json.load(f)
-        f.close
+        while True:
+            if os.path.isfile(path+"namespaceid_for_path.json"):
+                f=open(path+"namespaceid_for_path.json",mode="r")
+                cls.path_dict=json.load(f)
+                f.close
+                break
+            else:
+                continue
     def generate_data(self):
         self.path_list=Parse_interested_flow.path_dict[str(self.namespace_id)]
         
@@ -318,6 +326,34 @@ class Parse_interested_flow:
                 # print(link_delay)
                 link_dict[x] ="%.3fms"%((sum(link_delay)/float(len(link_delay)))/1000.0)
         return node_dict,link_dict
+    class MyHandler(FileSystemEventHandler):
+        def __init__(self,path_dir):
+            self.path_dir=path_dir
+        def on_modified(self, event):
+            if event.src_path==self.path_dir+"namespaceid_for_path.json":
+                print("namespaceid_for_path change")
+                Parse_interested_flow.share_path(self.path_dir)
+            elif event.src_path==self.path_dir+"config.json":
+                print("config change")
+                Parse_interested_flow.share_data(self.path_dir)
+            print("文件 change %s"%event.src_path)
+    
+        def on_created(self, event):
+            pass
+        def on_deleted(self, event):
+            pass
+    def moniter_file(self):
+        path_namespaceid_for_path_json = self.path+"namespaceid_for_path.json"
+        path_config_json=self.path+"config.json"
+        event_handler = self.MyHandler(self.path)
+        observer_config_json = Observer()
+        observer_config_json.schedule(event_handler, path_config_json, recursive=True)
+        observer_config_json.start()
+        observer_namespaceid_for_path_json=Observer()
+        observer_namespaceid_for_path_json.schedule(event_handler, path_namespaceid_for_path_json, recursive=True)
+        observer_namespaceid_for_path_json.start()
+        while True:
+            pass
 if __name__ == "__main__":
     obj1=Parse_interested_flow(1,0)
     obj1.read_register()

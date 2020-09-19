@@ -1,5 +1,5 @@
 #!/usr/bin/python
-
+# encoding: utf-8
 import copy
 import sqlite3
 import bitstring
@@ -13,8 +13,9 @@ from multiprocessing import Process
 import os
 import shelve
 import Queue
-
-class Oam:
+from watchdog.observers import Observer
+from watchdog.events import *
+class Oam():
     config_list = list()
     name_to_sid = dict()
     ipv6_address_to_sid=dict()
@@ -85,6 +86,7 @@ class Oam:
                 break
             else:
                 continue
+   
     def generate_address_list(self,namespace_id,sequence,*address_list):
         address_list_tmp=list(address_list)
         namespace_id = bitstring.pack('uintbe:16',namespace_id).hex
@@ -340,7 +342,34 @@ class Oam:
     def moniter(self):
 
         con_eth0 = sniff(prn=self.parse_packet, filter=self.filter, store=0, iface=self.iface)
+    class MyHandler(FileSystemEventHandler):
+        def __init__(self,path_dir):
+            self.path_dir=path_dir
+        def on_modified(self, event):
+            if event.src_path==self.path_dir+"peer.json":
+                print("peer change")
+                Oam.share_namespace_id_list(self.path_dir)
+            elif event.src_path==self.path_dir+"config.json":
+                print("config change")
+                Oam.share_data(self.path_dir)
+            print("文件 change %s"%event.src_path)
     
+        def on_created(self, event):
+            pass
+        def on_deleted(self, event):
+            pass
+    def moniter_file(self):
+        path_peer_json = self.path_dir+"peer.json"
+        path_config_json=self.path_dir+"config.json"
+        event_handler = self.MyHandler(self.path_dir)
+        observer_config_json = Observer()
+        observer_config_json.schedule(event_handler, path_config_json, recursive=True)
+        observer_config_json.start()
+        observer_peer_json=Observer()
+        observer_peer_json.schedule(event_handler, path_peer_json, recursive=True)
+        observer_peer_json.start()
+        while True:
+            pass
 
 if __name__ == "__main__":
     queue=Queue.Queue(40)
@@ -349,6 +378,8 @@ if __name__ == "__main__":
     obj3 = Oam(queue)
     p1=ThreadPoolExecutor(5)
     p1.submit(obj1.moniter)
+    p1.submit(obj1.moniter_file)
     p1.submit(obj2.send_oam_request)
     p1.submit(obj3.parse_metric)
+    
    
