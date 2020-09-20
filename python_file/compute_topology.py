@@ -1,8 +1,9 @@
 #!/usr/bin/python
+# encoding: utf-8
 import sys
 sys.path.insert(0,"../../behavioral-model/tools/")
 sys.path.insert(1,"../../behavioral-model/targets/simple_switch")
-
+from concurrent.futures import ThreadPoolExecutor
 import sqlite3
 import json
 import os
@@ -12,6 +13,7 @@ import time
 import datetime
 from watchdog.observers import Observer
 from watchdog.events import *
+import copy
 class Compute_Topology:
     
     config_list=list()
@@ -30,6 +32,10 @@ class Compute_Topology:
         # self.generate_all_path()
         self.start_time=0
         self.trigger_time=0
+        self.start_sequence=0
+        self.max_sequence=0
+        self.delay=dict()
+        # self.read_num=0
     @classmethod
     def share_data(cls,path):
         while True:
@@ -126,15 +132,23 @@ class Compute_Topology:
         load=255*((intf_packet/time)/bw)
         conn=sqlite3.connect("../db/telemetry.db")
         cursor = conn.cursor()
-        cursor.execute("select total_delay from metric_list where src='%s' and dst='%s'"%(src,dst))
+        cursor.execute("select total_delay,sequence from metric_list where src='%s' and dst='%s' and sequence>%d"%(src,dst,self.start_sequence))
         values=cursor.fetchall()
-        sum_delay=0
-        for tmp in values:
-            sum_delay=sum_delay+tmp[0]
-    
+        if len(values)!=0 and max([tmp[1] for tmp in values]) > self.max_sequence  :
+            self.max_sequence=max([tmp[1] for tmp in values])
+        delay=0
+        if len(values) ==0:
+            delay = self.delay[(src,dst)]
+        else:
+            sum_delay=0
+            for tmp in values:
+                sum_delay=sum_delay+tmp[0]
+                
+            delay =sum_delay/float(len(values))
+            self.delay[(src,dst)]=delay
         cursor.close()
         conn.close()
-        delay =sum_delay/float(len(values))
+        
         weight_tuple_list=list()
         for data in Compute_Topology.k_values:
             weight=int(256*((data[0]*bw)+((data[1]*bw)/(256-load))+(data[2]*delay)))
@@ -150,46 +164,53 @@ class Compute_Topology:
             # print(Compute_Topology.peer)
             for key in data.keys():
                 graph_tuple_list=self.generate_tuple(src,data[key][0],key,time)
+                
                 for serial in range(len(graph_list)):
                     graph_list[serial].append(graph_tuple_list[serial])
-
-        conn=sqlite3.connect("../db/telemetry.db")
-        cursor = conn.cursor()
-        cursor.execute("delete from metric_list")
-        conn.commit()
-        cursor.close()
-        conn.close()
+      
+        self.start_sequence=self.max_sequence 
+          
+        # conn=sqlite3.connect("../db/telemetry.db")
+        # cursor = conn.cursor()
+        # cursor.execute("delete from metric_list")
+        # conn.commit()
+        # cursor.close()
+        # conn.close()
         path_dict=dict()
         for serial in range(len(graph_list)):
             G = nx.Graph()
             G.add_node(Compute_Topology.src)
             G.add_weighted_edges_from(graph_list[serial])
             path=nx.dijkstra_path(G, source=Compute_Topology.src, target=Compute_Topology.dst)
-            path1=nx.all_simple_paths(G,source=Compute_Topology.src, target=Compute_Topology.dst)
-            for tmp in path1:
-                print(tmp)
             path_dict[Compute_Topology.k_values[serial]] = path
         
         print(path_dict)
+        return path_dict
     def regular_compute(self):
         while True:
-            time.sleep(30)
             if self.trigger_time!=0:
                 time.sleep(self.trigger_time)
                 self.trigger_time=0
             self.start_time=datetime.datetime.now()
             path=self.compute_path()
+            time.sleep(300)
             print(path)
+            
     def trigger_compute(self):
-        while True:
-            pass
+        time_tmp=datetime.datetime.now()
+        self.trigger_time=(time_tmp-self.start_time).seconds+(time_tmp-self.start_time).microseconds/float(10**6)
+        path=self.compute_path(self.trigger_time)
+        return path
+        
     class MyHandler(FileSystemEventHandler):
-        def __init__(self,path_dir):
+        def __init__(self,path_dir,compute_Topology):
             self.path_dir=path_dir
+            self.compute_Topology=compute_Topology
         def on_modified(self, event):
             if event.src_path==self.path_dir+"peer.json":
                 print("peer change")
                 Compute_Topology.share_data_peer(self.path_dir)
+                self.compute_Topology.trigger_compute()
             elif event.src_path==self.path_dir+"config.json":
                 print("config change")
                 Compute_Topology.share_data(self.path_dir)
@@ -202,7 +223,7 @@ class Compute_Topology:
     def moniter_file(self):
         path_peer_json = self.path_dir+"peer.json"
         path_config_json=self.path_dir+"config.json"
-        event_handler = self.MyHandler(self.path_dir)
+        event_handler = self.MyHandler(self.path_dir,self)
         observer_config_json = Observer()
         observer_config_json.schedule(event_handler, path_config_json, recursive=True)
         observer_config_json.start()
@@ -213,7 +234,10 @@ class Compute_Topology:
             pass  
 if __name__ == "__main__":
     obj1=Compute_Topology("../build/")
-    obj1.compute_path()
+    p1=ThreadPoolExecutor(5)
+    p1.submit(obj1.regular_compute)
+    p1.submit(obj1.moniter_file)
+
    
     
 

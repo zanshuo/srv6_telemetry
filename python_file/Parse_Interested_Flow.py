@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# encoding: utf-8
 from os import path
 from sqlite3.dbapi2 import connect
 import sys

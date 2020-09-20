@@ -1,4 +1,8 @@
 #!/usr/bin/python
+from datetime import datetime
+
+
+import datetime
 from os import remove
 import sqlite3
 import json
@@ -11,5 +15,5 @@ import networkx as nx
 # print(G._adj)
 # path=nx.dijkstra_path(G, source="r1", target="r4")
 # print(path)
-
-print(1*2.1)
+s1=datetime.datetime.now()
+print(s1,s1.second,s1.microsecond/1000000.0)

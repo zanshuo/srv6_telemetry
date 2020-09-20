@@ -29,7 +29,7 @@ class Oam():
         cursor = conn.cursor()
         cursor.execute("create table data_list(src varchar(40),tracetype varchar(40),namespace_id smallint,reserved tinyint,sequencenumber int,flowid int,flags smallint,\
                             export_ingress_port smallint,export_egress_port smallint,export_timestap bigint,export_transit_delay bigint,export_dequene_length int,export_enquene_length int,export_packet_length int)")
-        cursor.execute("create table metric_list(src varchar(40),dst varchar(40),total_delay bigint)")
+        cursor.execute("create table metric_list(src varchar(40),dst varchar(40),total_delay bigint,sequence int)")
         cursor.close()
         conn.commit()
         conn.close()
@@ -175,7 +175,7 @@ class Oam():
                     data["address_list"].reverse()
                     # conn=sqlite3.connect("../db/telemetry.db")
                     # cursor = conn.cursor()
-                    cursor.execute("insert into metric_list values('%s','%s','%d')"%(data["address_list"][0],data["address_list"][1],total_delay))
+                    cursor.execute("insert into metric_list values('%s','%s','%d','%d')"%(data["address_list"][0],data["address_list"][1],total_delay,data["sequence"]))
                     # cursor.close
                     conn.commit()
                     # conn.close()
